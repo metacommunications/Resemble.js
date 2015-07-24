@@ -141,15 +141,18 @@ URL: https://github.com/Huddle/Resemble.js
 				hiddenImage.setAttribute('crossorigin', 'anonymous');
 			}
 
-			hiddenImage.onload = function() {
+			hiddenImage.onload = function( event ) {
+				if( this.forcedOnLoad ) // browser-initiated onload event
+					clearTimeout( this.forcedOnLoad ); //
+
 				var hiddenCanvas =  document.createElement('canvas');
 				var imageData;
-				var width = hiddenImage.width;
-				var height = hiddenImage.height;
+				var width = this.width;
+				var height = this.height;
 
 				hiddenCanvas.width = width;
 				hiddenCanvas.height = height;
-				hiddenCanvas.getContext('2d').drawImage(hiddenImage, 0, 0, width, height);
+				hiddenCanvas.getContext('2d').drawImage(this, 0, 0, width, height);
 				imageData = hiddenCanvas.getContext('2d').getImageData(0, 0, width, height);
 
 				images.push(imageData);
@@ -160,7 +163,10 @@ URL: https://github.com/Huddle/Resemble.js
 			if (typeof fileData === 'string') {
 				hiddenImage.src = fileData;
 				if (hiddenImage.complete) {
-					hiddenImage.onload();
+					hiddenImage.forcedOnLoad = setTimeout( function forcedOnLoad() {
+						hiddenImage.forcedOnLoad = null;
+						hiddenImage.onload();
+					}, 0 );
 				}
 			} else if (typeof fileData.data !== 'undefined'
 					&& typeof fileData.width === 'number'
