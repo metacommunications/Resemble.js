@@ -816,7 +816,11 @@ URL: https://github.com/Huddle/Resemble.js
 					if( _this.resemble.workersCount < _this.resemble.MaxWorkersCount ) {
 						var workerUrl = window.URL.createObjectURL( new Blob(
 							[
-								"errorPixelTransformer=" + errorPixelTransform.flatDifferenceIntensity.toString() + ";",
+								"'use strict';",
+								"var errorPixelTransformer=" + errorPixelTransform.flatDifferenceIntensity.toString() + ";",
+								"var pixelTransparency;",
+								"var errorPixelColor;",
+								"var largeImageThreshold;",
 								analyseImagesWrapper.toString(),
 								getPixelInfo.toString(),
 								getBrightness.toString(),
