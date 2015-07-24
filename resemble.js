@@ -81,7 +81,9 @@ URL: https://github.com/Huddle/Resemble.js
 		var ignoreAntialiasing = false;
 		var ignoreColors = false;
 
-		function triggerDataUpdate(){
+		function triggerDataUpdate( dataArg ){
+			if( dataArg )
+				data = dataArg;
 			var len = updateCallbackArray.length;
 			var i;
 			for(i=0;i<len;i++){
@@ -182,321 +184,65 @@ URL: https://github.com/Huddle/Resemble.js
 			}
 		}
 
-		function isColorSimilar(a, b, color){
-
-			if(typeof a === 'undefined'){
-				return false;
-			}
-			if(typeof b === 'undefined'){
-				return false;
-			}
-
-			if(a === b){
-				return true;
-			} else if ( Math.abs(a - b) < tolerance[color] ) {
-				return true;
-			} else {
-				return false;
-			}
-		}
-
-		function isNumber(n) {
-			return !isNaN(parseFloat(n));
-		}
-
-		function isPixelBrightnessSimilar(d1, d2){
-			var alpha = isColorSimilar(d1.a, d2.a, 'alpha');
-			var brightness = isColorSimilar(d1.brightness, d2.brightness, 'minBrightness');
-			return brightness && alpha;
-		}
-
-		function getBrightness(r,g,b){
-			return 0.3*r + 0.59*g + 0.11*b;
-		}
-
-		function isRGBSame(d1,d2){
-			var red = d1.r === d2.r;
-			var green = d1.g === d2.g;
-			var blue = d1.b === d2.b;
-			return red && green && blue;
-		}
-
-		function isRGBSimilar(d1, d2){
-			var red = isColorSimilar(d1.r,d2.r,'red');
-			var green = isColorSimilar(d1.g,d2.g,'green');
-			var blue = isColorSimilar(d1.b,d2.b,'blue');
-			var alpha = isColorSimilar(d1.a, d2.a, 'alpha');
-
-			return red && green && blue && alpha;
-		}
-
-		function isContrasting(d1, d2){
-			return Math.abs(d1.brightness - d2.brightness) > tolerance.maxBrightness;
-		}
-
-		function getHue(r,g,b){
-			if (r == g && g == b)
-				return 0;
-
-			r = r / 255;
-			g = g / 255;
-			b = b / 255;
-			//var max_ = Math.max(r, g, b), min_ = Math.min(r, g, b);
-			var max, min;
-			if( r > g ) {
-				max = r;
-				min = g;
-			} else {
-				max = g;
-				min = r;
-			}
-			if( b > max )
-				max = b;
-			else if( b < min )
-				min = b;
-			var h;
-			var d;
-
-			if (max == min){
-				h = 0; // achromatic
-			} else{
-				d = max - min;
-				switch(max){
-					case r: h = (g - b) / d + (g < b ? 6 : 0); break;
-					case g: h = (b - r) / d + 2; break;
-					case b: h = (r - g) / d + 4; break;
-				}
-				h /= 6;
-			}
-
-			return h;
-		}
-
-		function isAntialiased(sourcePix, data, cacheSet, verticalPos, horizontalPos, width){
-			var offset;
-			var targetPix;
-			var distance = 1;
-			var i;
-			var j;
-			var hasHighContrastSibling = 0;
-			var hasSiblingWithDifferentHue = 0;
-			var hasEquivilantSibling = 0;
-
-			addHueInfo(sourcePix);
-
-			for (i = distance*-1; i <= distance; i++){
-				for (j = distance*-1; j <= distance; j++){
-
-					if(i===0 && j===0){
-						// ignore source pixel
-					} else {
-
-						offset = ((verticalPos+j)*width + (horizontalPos+i)) * 4;
-						targetPix = getPixelInfo(data, offset, cacheSet);
-
-						if(targetPix === null){
-							continue;
-						}
-
-						addBrightnessInfo(targetPix);
-						addHueInfo(targetPix);
-
-						if( isContrasting(sourcePix, targetPix) ){
-							hasHighContrastSibling++;
-						}
-
-						if( isRGBSame(sourcePix,targetPix) ){
-							hasEquivilantSibling++;
-						}
-
-						if( Math.abs(targetPix.h - sourcePix.h) > 0.3 ){
-							hasSiblingWithDifferentHue++;
-						}
-
-						if( hasSiblingWithDifferentHue > 1 || hasHighContrastSibling > 1){
-							return true;
-						}
-					}
-				}
-			}
-
-			if(hasEquivilantSibling < 2){
-				return true;
-			}
-
-			return false;
-		}
-
-		function errorPixel(px, offset, data1, data2){
-			var data = errorPixelTransformer(data1, data2);
-			px[offset] = data.r;
-			px[offset + 1] = data.g;
-			px[offset + 2] = data.b;
-			px[offset + 3] = data.a;
-		}
-
-		function copyPixel(px, offset, data){
-			px[offset] = data.r; //r
-			px[offset + 1] = data.g; //g
-			px[offset + 2] = data.b; //b
-			px[offset + 3] = data.a * pixelTransparency; //a
-		}
-
-		function copyGrayScalePixel(px, offset, data){
-			px[offset] = data.brightness; //r
-			px[offset + 1] = data.brightness; //g
-			px[offset + 2] = data.brightness; //b
-			px[offset + 3] = data.a * pixelTransparency; //a
-		}
-
-		function getPixelInfo(data, offset, cacheSet){
-			var r;
-			var g;
-			var b;
-			var d;
-			var a;
-
-			r = data[offset];
-
-			if(typeof r !== 'undefined'){
-				g = data[offset+1];
-				b = data[offset+2];
-				a = data[offset+3];
-				d = {
-					r: r,
-					g: g,
-					b: b,
-					a: a,
-					h: undefined,
-					brightness: undefined
-				};
-
-				return d;
-			} else {
-				return null;
-			}
-		}
-
-		function addBrightnessInfo(data){
-			data.brightness = getBrightness(data.r,data.g,data.b); // 'corrected' lightness
-		}
-
-		function addHueInfo(data){
-			data.h = getHue(data.r,data.g,data.b);
-		}
-
-		function analyseImages(img1, img2, width, height){
+		function analyseImages(img1, img2, width, height, triggerDataUpdate){
 
 			var hiddenCanvas = document.createElement('canvas');
-
-			var data1 = img1.data;
-			var data2 = img2.data;
 
 			hiddenCanvas.width = width;
 			hiddenCanvas.height = height;
 
-			var context = hiddenCanvas.getContext('2d');
-			var imgd = context.createImageData(width,height);
-			var targetPix = imgd.data;
+			var data1 = img1.data;
+			var data2 = img2.data;
 
-			var mismatchCount = 0;
-			var diffBounds = {
-				top: height,
-				left: width,
-				bottom: 0,
-				right: 0
+			var options = {
+				tolerance: tolerance,
+				ignoreAntialiasing: ignoreAntialiasing,
+				ignoreColors: ignoreColors
 			};
-			var updateBounds = function(x, y) {
-				diffBounds.left = Math.min(x, diffBounds.left);
-				diffBounds.right = Math.max(x, diffBounds.right);
-				diffBounds.top = Math.min(y, diffBounds.top);
-				diffBounds.bottom = Math.max(y, diffBounds.bottom);
+
+			if( _this.resemble.useWorker ) {
+				var worker = _this.resemble.workers[ _this.resemble.currentWorker++ ];
+				if( _this.resemble.currentWorker >= _this.resemble.workersCount )
+					_this.resemble.currentWorker = 0;
+				_this.resemble.workerContext[ _this.resemble.uid ] = { hiddenCanvas: hiddenCanvas, data: data, triggerDataUpdate: triggerDataUpdate };
+				worker.postMessage( {
+					uid: _this.resemble.uid++,
+					data1: data1,
+					data2: data2,
+					width: width,
+					height: height,
+					pixelTransparency: pixelTransparency,
+					errorPixelColor: errorPixelColor,
+					options: options,
+					__: undefined,
+				}, [ data1.buffer, data2.buffer ] );
+				//analyseImagesWrapper( data1, data2, width, height, targetPix, options );
 			}
+			else {
+				var context = hiddenCanvas.getContext('2d');
+				var imgd = context.createImageData(width,height);
+				var targetPix = imgd.data;
 
-			var time = Date.now();
+				data.getCanvas = function(text){
+					var barHeight = 0;
 
-			var skip;
+					if(text){
+						barHeight = addLabel(text,context,hiddenCanvas);
+					}
 
-			if(!!largeImageThreshold && ignoreAntialiasing && (width > largeImageThreshold || height > largeImageThreshold)){
-				skip = 6;
+					context.putImageData(imgd, 0, barHeight);
+
+					return hiddenCanvas;
+				};
+				data.getImageDataUrl = function(text){
+					return data.getCanvas(text).toDataURL("image/png");
+				};
+
+				analyseImagesWrapper( data1, data2, width, height, targetPix, options );
+				triggerDataUpdate();
 			}
-
-			for (var verticalPos=0;verticalPos<height;verticalPos++)
-				for (var horizontalPos=0;horizontalPos<width;horizontalPos++){
-
-				if(skip){ // only skip if the image isn't small
-					if(verticalPos % skip === 0 || horizontalPos % skip === 0){
-						return;
-					}
-				}
-
-				var offset = (verticalPos*width + horizontalPos) * 4;
-				var pixel1 = getPixelInfo(data1, offset, 1);
-				var pixel2 = getPixelInfo(data2, offset, 2);
-
-				if(pixel1 === null || pixel2 === null){
-					return;
-				}
-
-				if (ignoreColors){
-
-					addBrightnessInfo(pixel1);
-					addBrightnessInfo(pixel2);
-
-					if( isPixelBrightnessSimilar(pixel1, pixel2) ){
-						copyGrayScalePixel(targetPix, offset, pixel2);
-					} else {
-						errorPixel(targetPix, offset, pixel1, pixel2);
-						mismatchCount++;
-						updateBounds(horizontalPos, verticalPos);
-					}
-					return;
-				}
-
-				if( isRGBSimilar(pixel1, pixel2) ){
-					copyPixel(targetPix, offset, pixel1, pixel2);
-
-				} else if( ignoreAntialiasing && (
-						addBrightnessInfo(pixel1), // jit pixel info augmentation looks a little weird, sorry.
-						addBrightnessInfo(pixel2),
-						isAntialiased(pixel1, data1, 1, verticalPos, horizontalPos, width) ||
-						isAntialiased(pixel2, data2, 2, verticalPos, horizontalPos, width)
-					)){
-
-					if( isPixelBrightnessSimilar(pixel1, pixel2) ){
-						copyGrayScalePixel(targetPix, offset, pixel2);
-					} else {
-						errorPixel(targetPix, offset, pixel1, pixel2);
-						mismatchCount++;
-						updateBounds(horizontalPos, verticalPos);
-					}
-				} else {
-					errorPixel(targetPix, offset, pixel1, pixel2);
-					mismatchCount++;
-					updateBounds(horizontalPos, verticalPos);
-				}
-
-			};
-
-			data.misMatchPercentage = (mismatchCount / (height*width) * 100).toFixed(2);
-			data.diffBounds = diffBounds;
-			data.analysisTime = Date.now() - time;
-
-			data.getCanvas = function(text){
-				var barHeight = 0;
-
-				if(text){
-					barHeight = addLabel(text,context,hiddenCanvas);
-				}
-
-				context.putImageData(imgd, 0, barHeight);
-
-				return hiddenCanvas;
-			};
-			data.getImageDataUrl = function(text){
-				return data.getCanvas(text).toDataURL("image/png");
-			};
 		}
+
 
 		function addLabel(text, context, hiddenCanvas){
 			var textPadding = 2;
@@ -558,9 +304,7 @@ URL: https://github.com/Huddle/Resemble.js
 
 					data.dimensionDifference = { width: images[0].width - images[1].width, height: images[0].height - images[1].height };
 
-					analyseImages( normalise(images[0],width, height), normalise(images[1],width, height), width, height);
-
-					triggerDataUpdate();
+					analyseImages( normalise(images[0],width, height), normalise(images[1],width, height), width, height, triggerDataUpdate);
 				}
 			}
 
@@ -679,5 +423,423 @@ URL: https://github.com/Huddle/Resemble.js
 
 		return this;
 	};
+
+	function getBrightness(r,g,b){
+		return 0.3*r + 0.59*g + 0.11*b;
+	}
+
+	function isRGBSame(d1,d2){
+		var red = d1.r === d2.r;
+		var green = d1.g === d2.g;
+		var blue = d1.b === d2.b;
+		return red && green && blue;
+	}
+
+	function getHue(r,g,b){
+		if (r == g && g == b)
+			return 0;
+
+		r = r / 255;
+		g = g / 255;
+		b = b / 255;
+		//var max_ = Math.max(r, g, b), min_ = Math.min(r, g, b);
+		var max, min;
+		if( r > g ) {
+			max = r;
+			min = g;
+		} else {
+			max = g;
+			min = r;
+		}
+		if( b > max )
+			max = b;
+		else if( b < min )
+			min = b;
+		var h;
+		var d;
+
+		if (max == min){
+			h = 0; // achromatic
+		} else{
+			d = max - min;
+			switch(max){
+				case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+				case g: h = (b - r) / d + 2; break;
+				case b: h = (r - g) / d + 4; break;
+			}
+			h /= 6;
+		}
+
+		return h;
+	}
+
+	function errorPixel(px, offset, data1, data2){
+		var data = errorPixelTransformer(data1, data2);
+		px[offset] = data.r;
+		px[offset + 1] = data.g;
+		px[offset + 2] = data.b;
+		px[offset + 3] = data.a;
+	}
+
+	function copyPixel(px, offset, data){
+		px[offset] = data.r; //r
+		px[offset + 1] = data.g; //g
+		px[offset + 2] = data.b; //b
+		px[offset + 3] = data.a * pixelTransparency; //a
+	}
+
+	function copyGrayScalePixel(px, offset, data){
+		px[offset] = data.brightness; //r
+		px[offset + 1] = data.brightness; //g
+		px[offset + 2] = data.brightness; //b
+		px[offset + 3] = data.a * pixelTransparency; //a
+	}
+
+	function getPixelInfo(data, offset, cacheSet){
+		var r;
+		var g;
+		var b;
+		var d;
+		var a;
+
+		r = data[offset];
+
+		if(typeof r !== 'undefined'){
+			g = data[offset+1];
+			b = data[offset+2];
+			a = data[offset+3];
+			d = {
+				r: r,
+				g: g,
+				b: b,
+				a: a,
+				h: undefined,
+				brightness: undefined
+			};
+
+			return d;
+		} else {
+			return null;
+		}
+	}
+
+	function addBrightnessInfo(data){
+		data.brightness = getBrightness(data.r,data.g,data.b); // 'corrected' lightness
+	}
+
+	function addHueInfo(data){
+		data.h = getHue(data.r,data.g,data.b);
+	}
+
+	function analyseImagesWrapper(data1, data2, width, height, targetPix, options) {
+
+		var ignoreAntialiasing = options.ignoreAntialiasing;
+		var ignoreColors = options.ignoreColors;
+		var tolerance = options.tolerance;
+
+		function isColorSimilar(a, b, color){
+
+			if(typeof a === 'undefined'){
+				return false;
+			}
+			if(typeof b === 'undefined'){
+				return false;
+			}
+
+			if(a === b){
+				return true;
+			} else if ( Math.abs(a - b) < tolerance[color] ) {
+				return true;
+			} else {
+				return false;
+			}
+		}
+
+		function isNumber(n) {
+			return !isNaN(parseFloat(n));
+		}
+
+		function isPixelBrightnessSimilar(d1, d2){
+			var alpha = isColorSimilar(d1.a, d2.a, 'alpha');
+			var brightness = isColorSimilar(d1.brightness, d2.brightness, 'minBrightness');
+			return brightness && alpha;
+		}
+
+		function isRGBSimilar(d1, d2){
+			var red = isColorSimilar(d1.r,d2.r,'red');
+			var green = isColorSimilar(d1.g,d2.g,'green');
+			var blue = isColorSimilar(d1.b,d2.b,'blue');
+			var alpha = isColorSimilar(d1.a, d2.a, 'alpha');
+
+			return red && green && blue && alpha;
+		}
+
+		function isContrasting(d1, d2){
+			return Math.abs(d1.brightness - d2.brightness) > tolerance.maxBrightness;
+		}
+
+		function isAntialiased(sourcePix, data, cacheSet, verticalPos, horizontalPos, width){
+			var offset;
+			var targetPix;
+			var distance = 1;
+			var i;
+			var j;
+			var hasHighContrastSibling = 0;
+			var hasSiblingWithDifferentHue = 0;
+			var hasEquivilantSibling = 0;
+
+			addHueInfo(sourcePix);
+
+			for (i = distance*-1; i <= distance; i++){
+				for (j = distance*-1; j <= distance; j++){
+
+					if(i===0 && j===0){
+						// ignore source pixel
+					} else {
+
+						offset = ((verticalPos+j)*width + (horizontalPos+i)) * 4;
+						targetPix = getPixelInfo(data, offset, cacheSet);
+
+						if(targetPix === null){
+							continue;
+						}
+
+						addBrightnessInfo(targetPix);
+						addHueInfo(targetPix);
+
+						if( isContrasting(sourcePix, targetPix) ){
+							hasHighContrastSibling++;
+						}
+
+						if( isRGBSame(sourcePix,targetPix) ){
+							hasEquivilantSibling++;
+						}
+
+						if( Math.abs(targetPix.h - sourcePix.h) > 0.3 ){
+							hasSiblingWithDifferentHue++;
+						}
+
+						if( hasSiblingWithDifferentHue > 1 || hasHighContrastSibling > 1){
+							return true;
+						}
+					}
+				}
+			}
+
+			if(hasEquivilantSibling < 2){
+				return true;
+			}
+
+			return false;
+		}
+
+		function analyseImagesImpl( data1, data2, width, height, targetPix ) {
+			var mismatchCount = 0;
+			var diffBounds = {
+				top: height,
+				left: width,
+				bottom: 0,
+				right: 0
+			};
+			var updateBounds = function( x, y ) {
+				diffBounds.left = Math.min( x, diffBounds.left );
+				diffBounds.right = Math.max( x, diffBounds.right );
+				diffBounds.top = Math.min( y, diffBounds.top );
+				diffBounds.bottom = Math.max( y, diffBounds.bottom );
+			}
+
+			var time = Date.now();
+
+			var skip;
+
+			if( !!largeImageThreshold && ignoreAntialiasing && (width > largeImageThreshold || height > largeImageThreshold) ) {
+				skip = 6;
+			}
+
+			for( var verticalPos = 0; verticalPos < height; verticalPos++ )
+				for( var horizontalPos = 0; horizontalPos < width; horizontalPos++ ) {
+
+					if( skip ) { // only skip if the image isn't small
+						if( verticalPos % skip === 0 || horizontalPos % skip === 0 ) {
+							return;
+						}
+					}
+
+					var offset = (verticalPos * width + horizontalPos) * 4;
+					var pixel1 = getPixelInfo( data1, offset, 1 );
+					var pixel2 = getPixelInfo( data2, offset, 2 );
+
+					if( pixel1 === null || pixel2 === null ) {
+						return;
+					}
+
+					if( ignoreColors ) {
+
+						addBrightnessInfo( pixel1 );
+						addBrightnessInfo( pixel2 );
+
+						if( isPixelBrightnessSimilar( pixel1, pixel2 ) ) {
+							copyGrayScalePixel( targetPix, offset, pixel2 );
+						} else {
+							errorPixel( targetPix, offset, pixel1, pixel2 );
+							mismatchCount++;
+							updateBounds( horizontalPos, verticalPos );
+						}
+						return;
+					}
+
+					if( isRGBSimilar( pixel1, pixel2 ) ) {
+						copyPixel( targetPix, offset, pixel1, pixel2 );
+
+					} else if( ignoreAntialiasing && (
+							addBrightnessInfo( pixel1 ), // jit pixel info augmentation looks a little weird, sorry.
+								addBrightnessInfo( pixel2 ),
+							isAntialiased( pixel1, data1, 1, verticalPos, horizontalPos, width ) ||
+							isAntialiased( pixel2, data2, 2, verticalPos, horizontalPos, width )
+						) ) {
+
+						if( isPixelBrightnessSimilar( pixel1, pixel2 ) ) {
+							copyGrayScalePixel( targetPix, offset, pixel2 );
+						} else {
+							errorPixel( targetPix, offset, pixel1, pixel2 );
+							mismatchCount++;
+							updateBounds( horizontalPos, verticalPos );
+						}
+					} else {
+						errorPixel( targetPix, offset, pixel1, pixel2 );
+						mismatchCount++;
+						updateBounds( horizontalPos, verticalPos );
+					}
+
+				}
+			;
+			var data = {};
+			data.misMatchPercentage = (mismatchCount / (height * width) * 100).toFixed( 2 );
+			data.diffBounds = diffBounds;
+			data.analysisTime = Date.now() - time;
+			return data;
+
+		}
+
+		return analyseImagesImpl( data1, data2, width, height, targetPix );
+	}
+
+	function workerHandleAnalyze( event ) {
+		var req = event.data;
+		var uid = req.uid;
+		pixelTransparency = req.pixelTransparency;
+		errorPixelColor = req.errorPixelColor;
+		largeImageThreshold = req.largeImageThreshold;
+		var options = req.options;
+		var targetAb = new ArrayBuffer( req.width * req.height * 4 );
+		var targetPix = new Uint8Array( targetAb );
+		var resultData = analyseImagesWrapper( req.data1, req.data2, req.width, req.height, targetPix, options );
+		self.postMessage( {
+			uid: uid,
+			width: req.width,
+			height: req.height,
+			resultData: resultData,
+			targetPix: targetPix
+		}, [ targetPix.buffer ] );
+	}
+
+	function handleWorkerResult( event ) {
+		var res = event.data;
+		var uid = res.uid;
+		var workerContext = _this.resemble.workerContext[ uid ];
+		console.log( "Got results #" + uid + " from worker " + event.target.number );
+		delete _this.resemble.workerContext[ uid ];
+		var hiddenCanvas = workerContext.hiddenCanvas;
+		var data = workerContext.data;
+		var resultData = res.resultData;
+		for( var k in resultData )
+			data[k] = resultData[k];
+		var triggerDataUpdate = workerContext.triggerDataUpdate;
+
+		var targetPix = res.targetPix;
+
+		var context = hiddenCanvas.getContext('2d');
+		var imgd = context.createImageData(res.width,res.height);
+		imgd.data.set( targetPix );
+
+		data.getCanvas = function(text){
+			var barHeight = 0;
+
+			//if(text){
+			//	barHeight = addLabel(text,context,hiddenCanvas);
+			//}
+
+			context.putImageData(imgd, 0, barHeight);
+
+			return hiddenCanvas;
+		};
+		data.getImageDataUrl = function(text){
+			return data.getCanvas(text).toDataURL("image/png");
+		};
+
+		triggerDataUpdate( data );
+	}
+
+	var isWorker = typeof importScript == "function";
+	if( !isWorker ) {
+		_this.resemble.uid = 0;
+		_this.resemble.workerContext = {};
+		_this.resemble.useWorker = window.Worker && window.URL && !!window.URL.createObjectURL;
+		if( _this.resemble.useWorker ) {
+			(function testWorkerTransferrable() {
+				try {
+					var testWorkerUrl = window.URL.createObjectURL( new Blob(
+						[ "onmessage = function(e) {};" ], {
+							type: "text/javascript"
+						} ) );
+					var testWorker = new Worker( testWorkerUrl );
+					var ab = new ArrayBuffer( 1 );
+					testWorker.postMessage( ab, [ ab ] );
+					var supported = ab.byteLength == 0;
+					_this.resemble.useWorker = supported;
+					testWorker.terminate();
+					window.URL.revokeObjectURL( testWorkerUrl );
+					if( supported )
+						console.info( "Transferrable objects are supported" );
+					else
+						console.warn( "Transferrable objects are not supported" );
+				}
+				catch( e ) {
+					console.error( e, "Cannot use transferrable objects" );
+					_this.resemble.useWorker = false;
+				}
+			})();
+			if( _this.resemble.useWorker )
+				(function initWorker() {
+					var workerUrl = window.URL.createObjectURL( new Blob(
+						[
+							"errorPixelTransformer=" + errorPixelTransformer.toString() + ";",
+							analyseImagesWrapper.toString(),
+							getPixelInfo.toString(),
+							getBrightness.toString(),
+							getHue.toString(),
+							addBrightnessInfo.toString(),
+							addHueInfo.toString(),
+							isRGBSame.toString(),
+							copyPixel.toString(),
+							copyGrayScalePixel.toString(),
+							errorPixel.toString(),
+							workerHandleAnalyze.toString(),
+							"onmessage = workerHandleAnalyze;"
+						], {
+							type: "text/javascript"
+						} ) );
+					_this.resemble.currentWorker = 0;
+					_this.resemble.workersCount = 4;
+					_this.resemble.workers = [];
+					for( var i = 0; i < _this.resemble.workersCount; i++ ) {
+						var worker = new Worker( workerUrl );
+						worker.number = i;
+						worker.onmessage = handleWorkerResult;
+						_this.resemble.workers.push( worker );
+					}
+				})();
+	}
+	}
 
 }(this));
