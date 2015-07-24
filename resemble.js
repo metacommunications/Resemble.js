@@ -780,7 +780,7 @@ URL: https://github.com/Huddle/Resemble.js
 		triggerDataUpdate( data );
 	}
 
-	var isWorker = typeof importScript == "function";
+	var isWorker = typeof importScripts == "function";
 	if( !isWorker ) {
 		_this.resemble.uid = 0;
 		_this.resemble.workerContext = {};
