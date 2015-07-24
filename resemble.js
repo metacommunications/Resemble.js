@@ -201,9 +201,7 @@ URL: https://github.com/Huddle/Resemble.js
 			};
 
 			if( _this.resemble.useWorker ) {
-				var worker = _this.resemble.workers[ _this.resemble.currentWorker++ ];
-				if( _this.resemble.currentWorker >= _this.resemble.workersCount )
-					_this.resemble.currentWorker = 0;
+				var worker = getWorker();
 				_this.resemble.workerContext[ _this.resemble.uid ] = { hiddenCanvas: hiddenCanvas, data: data, triggerDataUpdate: triggerDataUpdate };
 				worker.postMessage( {
 					uid: _this.resemble.uid++,
@@ -809,36 +807,43 @@ URL: https://github.com/Huddle/Resemble.js
 					_this.resemble.useWorker = false;
 				}
 			})();
-			if( _this.resemble.useWorker )
-				(function initWorker() {
-					var workerUrl = window.URL.createObjectURL( new Blob(
-						[
-							"errorPixelTransformer=" + errorPixelTransformer.toString() + ";",
-							analyseImagesWrapper.toString(),
-							getPixelInfo.toString(),
-							getBrightness.toString(),
-							getHue.toString(),
-							addBrightnessInfo.toString(),
-							addHueInfo.toString(),
-							isRGBSame.toString(),
-							copyPixel.toString(),
-							copyGrayScalePixel.toString(),
-							errorPixel.toString(),
-							workerHandleAnalyze.toString(),
-							"onmessage = workerHandleAnalyze;"
-						], {
-							type: "text/javascript"
-						} ) );
-					_this.resemble.currentWorker = 0;
-					_this.resemble.workersCount = 4;
-					_this.resemble.workers = [];
-					for( var i = 0; i < _this.resemble.workersCount; i++ ) {
+			if( _this.resemble.useWorker ) {
+				_this.resemble.currentWorker = 0;
+				_this.resemble.MaxWorkersCount = 4;
+				_this.resemble.workersCount = 0;
+				_this.resemble.workers = [];
+				var getWorker = function getWorker() {
+					if( _this.resemble.workersCount < _this.resemble.MaxWorkersCount ) {
+						var workerUrl = window.URL.createObjectURL( new Blob(
+							[
+								"errorPixelTransformer=" + errorPixelTransformer.toString() + ";",
+								analyseImagesWrapper.toString(),
+								getPixelInfo.toString(),
+								getBrightness.toString(),
+								getHue.toString(),
+								addBrightnessInfo.toString(),
+								addHueInfo.toString(),
+								isRGBSame.toString(),
+								copyPixel.toString(),
+								copyGrayScalePixel.toString(),
+								errorPixel.toString(),
+								workerHandleAnalyze.toString(),
+								"onmessage = workerHandleAnalyze;"
+							], {
+								type: "text/javascript"
+							} ) );
 						var worker = new Worker( workerUrl );
-						worker.number = i;
+						worker.number = _this.resemble.workersCount;
 						worker.onmessage = handleWorkerResult;
 						_this.resemble.workers.push( worker );
+						_this.resemble.workersCount++;
 					}
-				})();
+					if( _this.resemble.currentWorker >= _this.resemble.workersCount )
+						_this.resemble.currentWorker = 0;
+					var result = _this.resemble.workers[ _this.resemble.currentWorker++ ];
+					return result;
+				};
+			}
 	}
 	}
 
