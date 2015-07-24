@@ -142,7 +142,6 @@ URL: https://github.com/Huddle/Resemble.js
 			}
 
 			hiddenImage.onload = function() {
-
 				var hiddenCanvas =  document.createElement('canvas');
 				var imageData;
 				var width = hiddenImage.width;
@@ -179,8 +178,6 @@ URL: https://github.com/Huddle/Resemble.js
 
 		function isColorSimilar(a, b, color){
 
-			var absDiff = Math.abs(a - b);
-
 			if(typeof a === 'undefined'){
 				return false;
 			}
@@ -190,7 +187,7 @@ URL: https://github.com/Huddle/Resemble.js
 
 			if(a === b){
 				return true;
-			} else if ( absDiff < tolerance[color] ) {
+			} else if ( Math.abs(a - b) < tolerance[color] ) {
 				return true;
 			} else {
 				return false;
@@ -238,7 +235,19 @@ URL: https://github.com/Huddle/Resemble.js
 			r = r / 255;
 			g = g / 255;
 			b = b / 255;
-			var max = Math.max(r, g, b), min = Math.min(r, g, b);
+			//var max_ = Math.max(r, g, b), min_ = Math.min(r, g, b);
+			var max, min;
+			if( r > g ) {
+				max = r;
+				min = g;
+			} else {
+				max = g;
+				min = r;
+			}
+			if( b > max )
+				max = b;
+			else if( b < min )
+				min = b;
 			var h;
 			var d;
 
@@ -351,7 +360,9 @@ URL: https://github.com/Huddle/Resemble.js
 					r: r,
 					g: g,
 					b: b,
-					a: a
+					a: a,
+					h: undefined,
+					brightness: undefined
 				};
 
 				return d;
