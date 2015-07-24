@@ -109,7 +109,8 @@ URL: https://github.com/Huddle/Resemble.js
 			var blueTotal = 0;
 			var brightnessTotal = 0;
 
-			loop(height, width, function(verticalPos, horizontalPos){
+			for (var verticalPos=0;verticalPos<height;verticalPos++)
+				for (var horizontalPos=0;horizontalPos<width;horizontalPos++){
 				var offset = (verticalPos*width + horizontalPos) * 4;
 				var red = sourceImageData[offset];
 				var green = sourceImageData[offset + 1];
@@ -122,7 +123,7 @@ URL: https://github.com/Huddle/Resemble.js
 				greenTotal += green / 255 * 100;
 				blueTotal += blue / 255 * 100;
 				brightnessTotal += brightness / 255 * 100;
-			});
+			};
 
 			data.red = Math.floor(redTotal / pixelCount);
 			data.green = Math.floor(greenTotal / pixelCount);
@@ -231,6 +232,8 @@ URL: https://github.com/Huddle/Resemble.js
 		}
 
 		function getHue(r,g,b){
+			if (r == g && g == b)
+				return 0;
 
 			r = r / 255;
 			g = g / 255;
@@ -401,7 +404,8 @@ URL: https://github.com/Huddle/Resemble.js
 				skip = 6;
 			}
 
-			loop(height, width, function(verticalPos, horizontalPos){
+			for (var verticalPos=0;verticalPos<height;verticalPos++)
+				for (var horizontalPos=0;horizontalPos<width;horizontalPos++){
 
 				if(skip){ // only skip if the image isn't small
 					if(verticalPos % skip === 0 || horizontalPos % skip === 0){
@@ -455,13 +459,13 @@ URL: https://github.com/Huddle/Resemble.js
 					updateBounds(horizontalPos, verticalPos);
 				}
 
-			});
+			};
 
 			data.misMatchPercentage = (mismatchCount / (height*width) * 100).toFixed(2);
 			data.diffBounds = diffBounds;
 			data.analysisTime = Date.now() - time;
 
-			data.getImageDataUrl = function(text){
+			data.getCanvas = function(text){
 				var barHeight = 0;
 
 				if(text){
@@ -470,7 +474,10 @@ URL: https://github.com/Huddle/Resemble.js
 
 				context.putImageData(imgd, 0, barHeight);
 
-				return hiddenCanvas.toDataURL("image/png");
+				return hiddenCanvas;
+			};
+			data.getImageDataUrl = function(text){
+				return data.getCanvas(text).toDataURL("image/png");
 			};
 		}
 
